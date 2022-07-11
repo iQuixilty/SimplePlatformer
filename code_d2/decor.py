@@ -5,7 +5,7 @@ from code_d2.support import import_folder
 from random import choice, randint
 
 class Sky:
-    def __init__(self, horizon):
+    def __init__(self, horizon, style='l'):
         self.top = pygame.image.load('../graphics/decor/sky/sky_top.png').convert()
         self.bottom = pygame.image.load('../graphics/decor/sky/sky_bottom.png').convert()
         self.middle = pygame.image.load('../graphics/decor/sky/sky_middle.png').convert()
@@ -16,6 +16,17 @@ class Sky:
         self.bottom = pygame.transform.scale(self.bottom, (screen_width, tile_size))
         self.middle = pygame.transform.scale(self.middle, (screen_width, tile_size))
 
+        self.style = style
+        if self.style == 'o':
+            cloud_surf = import_folder('../graphics/decor/clouds')
+            self.clouds = []
+
+            for surface in [choice(cloud_surf) for image in range(10)]:
+                x = randint(0, screen_width)
+                y = randint(0, (self.horizon * tile_size) - 100)
+                rect = surface.get_rect(midbottom = (x, y))
+                self.clouds.append((surface, rect))
+
     def draw(self, surface):
         for row in range(vertical_tile_number):
             y = row * tile_size
@@ -25,6 +36,11 @@ class Sky:
                 surface.blit(self.middle, (0, y))
             else:
                 surface.blit(self.bottom, (0, y))
+
+        if self.style == "o":
+            for cloud in self.clouds:
+                surface.blit(cloud[0], cloud[1])
+
 
 class Water:
     def __init__(self, top, level_width):

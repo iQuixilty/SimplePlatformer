@@ -4,13 +4,20 @@ from code_d2.settings import tile_size, screen_height, screen_width
 from code_d2.tiles import Tile, StaticTile, Tree
 from code_d2.decor import Sky, Water, Clouds
 from code_d2.player import Player
+from code_d2.game_data import levels
 
 class Level:
-    def __init__(self, level_data, surface):
+    def __init__(self, current_level, surface, create_overworld):
         # setup
         self.display_surface = surface
         self.world_shift = 0
         self.current_x = None
+
+        # overworld connection
+        self.create_overworld = create_overworld
+        self.current_level = current_level
+        level_data = levels[self.current_level]
+        self.new_max_level = level_data['unlock']
 
         # player
         player_layout = import_csv_layout(level_data['player'])
@@ -46,7 +53,7 @@ class Level:
                     y = row_index * tile_size
 
                     if type == "terrain":
-                        terrain_tile_list = import_cut_graphics('../graphics/terrain/terrain_tiles.png')
+                        terrain_tile_list = import_cut_graphics('../graphics/terrain/all_terrain_tiles.png')
                         tile_surface = terrain_tile_list[int(val)]
                         sprite = StaticTile(tile_size, x, y, tile_surface)
                         sprite_group.add(sprite)
@@ -84,7 +91,7 @@ class Level:
     def horizontal_movement_collision(self):
         player = self.player.sprite
         player.rect.x += player.direction.x * player.speed
-        collidable_sprites = self.terrain_sprites.sprites()
+        collidable_sprites = self.terrain_sprites.sprites() + self.fg_trees_sprites.sprites()
 
         for sprite in collidable_sprites:
             if player.rect.colliderect(sprite.rect):
@@ -105,7 +112,7 @@ class Level:
     def vertical_movement_collision(self):
         player = self.player.sprite
         player.apply_gravity()
-        collidable_sprites = self.terrain_sprites.sprites()
+        collidable_sprites = self.terrain_sprites.sprites() + self.fg_trees_sprites.sprites()
 
         for sprite in collidable_sprites:
             if sprite.rect.colliderect(player.rect):
@@ -138,6 +145,14 @@ class Level:
             self.world_shift = 0
             player.speed = 8
 
+    def check_death(self):
+        if self.player.sprite.rect.top > screen_height:
+            self.create_overworld(self.current_level, 0)
+
+    def check_win(self):
+        if pygame.sprite.spritecollide(self.player.sprite, self.goal, False):
+            self.create_overworld(self.current_level, self.new_max_level)
+
     def run(self):
         # sky
         self.sky.draw(self.display_surface)
@@ -159,10 +174,15 @@ class Level:
         self.player.update()
         self.horizontal_movement_collision()
         self.vertical_movement_collision()
-        self.scroll_x()
         self.player.draw(self.display_surface)
         self.goal.update(self.world_shift)
         self.goal.draw(self.display_surface)
 
         # water
         self.water.draw(self.display_surface, self.world_shift)
+
+        # game states
+        self.check_death()
+        self.check_win()
+
+        self.scroll_x()
